@@ -1,0 +1,301 @@
+---
+title: "Exploration of Tooth Growth Data"
+author: "Ben Kesseler"
+date: "June 19, 2016"
+output: pdf_document
+geometry: margin=1cm
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+
+I will first load and explore the data, before summarizing it briefly. Then I
+will compare the tooth growth between different dosages of different supplements
+delivery methods, to see if there is any statistically significant impact, at 
+the 5% level.
+
+# Dataset & Initial Exploration
+
+Loading the dataset
+
+```{r libraries}
+library(ggplot2)
+library(datasets)
+library(gridExtra)
+```
+
+```{r simpleexploration}
+# What is the structure?
+str(ToothGrowth)
+
+# Summary
+summary(ToothGrowth)
+
+# Slight conversion needed for dosage (as a factor)
+tooth_data <- ToothGrowth
+tooth_data$dose <- as.factor(tooth_data$dose)
+```
+
+# Graphical Exploration
+
+Now I'm going to explore and plot the data a bit more thoroughly. There are only
+2 main characteristics to this data, dosage given (dose) of the supplement (supp).
+
+Note, the main code for this is suppressed, simply to keep the report length
+down. All code is present in the underlying RMarkdown file, which can be found
+by going to the github repository linked in the appendix.
+
+```{r plotexploration1, echo = FALSE}
+plot1 <- ggplot(data = tooth_data, aes(x = dose, y = len, fill = dose)) +
+         geom_boxplot(size = 1, col = "black") +
+         scale_fill_brewer(palette = "Blues") +
+         theme_bw() +
+         ggtitle("Dosage") +
+         labs(x = "Dosage (mg/day)", y = "Length") +
+         theme(legend.position = "bottom")
+```
+
+```{r plotexploration2, echo = FALSE}
+plot2 <- ggplot(data = tooth_data, aes(x = supp, y = len, fill = supp)) +
+         geom_boxplot(size = 1, col = "black") +
+         scale_fill_brewer(palette = "Dark2") +
+         theme_bw() +
+         ggtitle("Delivery Method") +
+         labs(x = "Supplement", y = "Length") +
+         theme(legend.position = "bottom")
+```
+
+```{r plotexploration3, echo = FALSE}
+plot3 <- ggplot(data = tooth_data, aes(x = dose, y = len, fill = supp)) +
+         geom_boxplot(size = 1, col = "black") +
+         scale_fill_brewer(palette = "Dark2") +
+         theme_bw() +
+         ggtitle("Dosage & Delivery Method") +
+         labs(x = "Dosage (mg/day)", y = "Length") +
+         theme(legend.position = "bottom")
+```
+
+```{r plots, fig.width = 10, fig.height = 4, fig.cap = "Boxplots comparing dosage, supplement delivery method, and the combination of the two, from left to right."}
+grid.arrange(plot1, plot2, plot3, ncol = 3)
+```
+
+So just based on a graphical analysis, I expect to see statistical significance:
+
+* between dosages (independent of supplement delivery method)
+
+* between supplement delivery method, independent of dosages
+
+* between supplement delivery method at lower dosages
+
+# Statistical Significance Between Dosages
+
+I will compare the distributions between dosages:
+
+* 0.5 mg/day vs 1.0 mg/day
+
+* 0.5 mg/day vs 2.0 mg/day
+
+* 1.0 mg/day vs 2.0 mg/day
+
+```{r dosagecomparison}
+test_0_5_v_1 <- t.test(len ~ dose, tooth_data[tooth_data$dose != 2, ],
+                       paired = FALSE, var.equal = FALSE)
+test_0_5_v_2 <- t.test(len ~ dose, tooth_data[tooth_data$dose != 1, ],
+                       paired = FALSE, var.equal = FALSE)
+test_1_v_2 <- t.test(len ~ dose, tooth_data[tooth_data$dose != 0.5, ],
+                     paired = FALSE, var.equal = FALSE)
+
+dosage_table <- data.frame("comparison" = c("0.5 mg/day vs 1.0 mg/day",
+                                        "0.5 mg/day vs 2.0 mg/day",
+                                        "1.0 mg/day vs 2.0 mg/day"),
+                           "p-value" = c(round(test_0_5_v_1$p.value, 4),
+                                         round(test_0_5_v_2$p.value, 4),
+                                         round(test_1_v_2$p.value, 4)))
+names(dosage_table) <- c("comparison", "p-value")
+
+dosage_table
+```
+
+So, as expected, the difference between tooth growth length is significant by
+dosage, in all cases, with increasing dosage seeing increasing tooth growth.
+
+I checked power in the appendix, its reasonably high (at least 96.6%) in all 
+possible cases, reducing the risk of a type II error.
+
+# Statistical Significance Between Supplement Delivery Method
+
+I will compare the distributions between supplements:
+
+* OJ vs VC (orange juice vs ascorbic acid)
+
+```{r supplementcomparison}
+test_OJ_v_VC <- t.test(len ~ supp, tooth_data, paired = FALSE, var.equal = FALSE)
+
+supplement_table <- data.frame("comparison" = "OJ vs VC",
+                               "p-value" = round(test_OJ_v_VC$p.value, 4))
+names(supplement_table) <- c("comparison", "p-value")
+
+supplement_table
+```
+
+So, the difference between supplements, independent of dosage, is not 
+statistically significant, in terms of tooth growth, at the 5% level. In 
+addition, the power is very low (see appendix for calculation), at only 45.3%
+
+# Statistical Significance Between Supplement Delivery Methods, Considering Dosage
+
+I show this work in the appendix, to keep the length of the report down, and
+because the power is low in all variations here (always less than 82%).
+
+The difference in tooth growth, between supplement delivery methods, when 
+considering dosage, is statistically significant only for 0.5 mg/day and 
+1.0 mg/day dosage.
+
+The power for the 0.5 mg/day calculation is not large, at only 69.4%, so the 
+result is suspect (possible type II error) (see appendix for power calculations).
+
+The power for the 1.0 mg/day comparison is higher, at ~81.05%, so the chances of
+a type II error are lower in that case, but more samples would be better.
+
+# Conclusions (and Assumptions)
+
+## Assumptions
+
+* The guinea pig data is not paired, between supplement delivery methods or doses
+
+* The variance between sample sets is not expected to be equal
+
+* The populations are otherwise independent
+
+* Proper sampling methodologies were used, so that other factors were controlled
+
+* A proper double-blind study was done, so those researchers measuring the tooth length were not biased
+
+* 60 guinea pigs is enough to reduce power issues (see appendix for analysis)
+
+## Conclusions
+
+* Higher dosages make teeth grow more, independent of supplement delivery methods
+
+* Orange Juice (OJ) makes teeth grow more than ascorbic acid (VC) at 1.0 mg/day, but no real difference occurs at 2.0 mg/day, and we cannot be confident of avoiding a type II error at 0.5 mg/day.
+
+\pagebreak
+
+# Appendices
+
+## Statistical Significance Between Supplement Delivery Methods, Considering Dosage
+
+I will compare the distributions between supplement delivery methods, 
+considering dosage:
+
+* OJ vs VC, for 0.5 mg/day
+
+* OJ vs VC, for 1.0 mg/day
+
+* OJ vs VC, for 2.0 mg/day
+
+```{r multicomparison}
+test_OJ_v_VC_0_5 <- t.test(len ~ supp, tooth_data[tooth_data$dose == 0.5, ],
+                           paired = FALSE, var.equal = FALSE)
+test_OJ_v_VC_1 <- t.test(len ~ supp, tooth_data[tooth_data$dose == 1, ],
+                         paired = FALSE, var.equal = FALSE)
+test_OJ_v_VC_2 <- t.test(len ~ supp, tooth_data[tooth_data$dose == 2, ],
+                         paired = FALSE, var.equal = FALSE)
+
+mixed_table <- data.frame("comparison" = c("OJ vs VC, 0.5 mg/day",
+                                           "OJ vs VC, 1.0 mg/day",
+                                           "OJ vs VC, 2.0 mg/day"),
+                          "p-value" = c(round(test_OJ_v_VC_0_5$p.value, 4),
+                                        round(test_OJ_v_VC_1$p.value, 4),
+                                        round(test_OJ_v_VC_2$p.value, 4)))
+names(mixed_table) <- c("comparison", "p-value")
+
+mixed_table
+```
+
+## Sample Size (Power)
+
+### 0.5 mg/day vs 1.0 mg/day, independent of supplement delivery method
+
+```{r power1}
+d_delta <- mean(tooth_data$len[tooth_data$dose == 1]) - 
+           mean(tooth_data$len[tooth_data$dose == 0.5])
+d_type <- "two.sample"
+d_sd <- sd(tooth_data$len[tooth_data$dose != 2])
+d_siglevel <- 0.05
+d_n <- 20
+power.t.test(delta = d_delta, sd = d_sd, sig.level = d_siglevel, type = d_type, n = d_n)$power
+```
+
+### 0.5 mg/day vs 2.0 mg/day, independent of supplement delivery method
+
+```{r power2}
+d_delta <- mean(tooth_data$len[tooth_data$dose == 2]) - 
+           mean(tooth_data$len[tooth_data$dose == 0.5])
+d_sd <- sd(tooth_data$len[tooth_data$dose != 1])
+power.t.test(delta = d_delta, sd = d_sd, sig.level = d_siglevel, type = d_type, n = d_n)$power
+```
+
+### 1.0 mg/day vs 2.0 mg/day, independent of supplement delivery method
+
+```{r power3}
+d_delta <- mean(tooth_data$len[tooth_data$dose == 2]) - 
+           mean(tooth_data$len[tooth_data$dose == 1])
+d_sd <- sd(tooth_data$len[tooth_data$dose != 0.5])
+power.t.test(delta = d_delta, sd = d_sd, sig.level = d_siglevel, type = d_type, n = d_n)$power
+```
+
+### OJ vs VC, independent of dosage
+
+```{r power4}
+d_delta <- mean(tooth_data$len[tooth_data$supp == "OJ"]) - 
+           mean(tooth_data$len[tooth_data$supp == "VC"])
+d_sd <- sd(tooth_data$len)
+d_n <- 30
+power.t.test(delta = d_delta, sd = d_sd, sig.level = d_siglevel, type = d_type, n = d_n)$power
+```
+
+### OJ vs VC, 0.5 mg/day
+
+```{r power5}
+d_delta <- mean(tooth_data$len[tooth_data$supp == "OJ" & tooth_data$dose == 0.5]) - 
+           mean(tooth_data$len[tooth_data$supp == "VC" & tooth_data$dose == 0.5])
+d_sd <- sd(tooth_data$len[tooth_data$dose == 0.5])
+d_n <- 10
+power.t.test(delta = d_delta, sd = d_sd, sig.level = d_siglevel, type = d_type, n = d_n)$power
+```
+
+### OJ vs VC, 1.0 mg/day
+
+```{r power6}
+d_delta <- mean(tooth_data$len[tooth_data$supp == "OJ" & tooth_data$dose == 1]) - 
+           mean(tooth_data$len[tooth_data$supp == "VC" & tooth_data$dose == 1])
+d_sd <- sd(tooth_data$len[tooth_data$dose == 1])
+power.t.test(delta = d_delta, sd = d_sd, sig.level = d_siglevel, type = d_type, n = d_n)$power
+```
+
+### OJ vs VC, 2.0 mg/day
+
+```{r power7}
+d_delta <- mean(tooth_data$len[tooth_data$supp == "OJ" & tooth_data$dose == 2]) - 
+           mean(tooth_data$len[tooth_data$supp == "VC" & tooth_data$dose == 2])
+d_sd <- sd(tooth_data$len[tooth_data$dose == 2])
+power.t.test(delta = d_delta, sd = d_sd, sig.level = d_siglevel, type = d_type, n = d_n)$power
+```
+
+## Additional Resources
+
+* [Github Repository](https://github.com/bkkesseler/DSS6-Statistical-Inference-Week4)
+
+## Session Information
+
+- 3.20 GHz Intel i5 650
+- 8GB RAM
+- RStudio Version 0.99.902
+
+```{r sessioninfo}
+sessionInfo()
+```

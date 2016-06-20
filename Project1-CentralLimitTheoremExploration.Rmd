@@ -217,19 +217,15 @@ ggplot(data = simulation_means_100000, aes(x = means)) +
 
 Much closer still!
 
-
-***
-
 ## Additional Resources
 
 * [Github Repository](https://github.com/bkkesseler/DSS6-Statistical-Inference-Week4)
 
 ## Session Information
 
-- Toshiba Chromeboook 2 (2015)
-- 1.70 GHz Intel Celeron 3215U
-- 4GB RAM
-- RStudio Version 0.99.893
+- 3.20 GHz Intel i5 650
+- 8GB RAM
+- RStudio Version 0.99.902
 
 ```{r sessioninfo}
 sessionInfo()
